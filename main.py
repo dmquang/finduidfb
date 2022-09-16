@@ -2,36 +2,53 @@ from typing import Union
 from fastapi import FastAPI
 import requests
 import json
+import uvicorn
+
 app = FastAPI()
+
+def follow(cookie,uid):
+    try:
+        csrftoken=cookie.split('csrftoken=')[1].split(';')[0]
+        headers = {
+            'authority': 'i.instagram.com',
+            'accept': '*/*',
+            'accept-language': 'vi,en;q=0.9,vi-VN;q=0.8,fr-FR;q=0.7,fr;q=0.6,en-US;q=0.5',
+            'content-type': 'application/x-www-form-urlencoded',
+            'cookie': cookie,
+            'origin': 'https://www.instagram.com',
+            'referer': 'https://www.instagram.com/',
+            'sec-ch-ua': '"Google Chrome";v="105", "Not)A;Brand";v="8", "Chromium";v="105"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36',
+            'x-csrftoken': csrftoken,
+        }
+        checkacc = requests.get('https://www.instagram.com/', headers=headers).text
+        try:
+            idac = checkacc.split('viewerId":"')[1].split('"')[0]
+            response = requests.post(f'https://i.instagram.com/api/v1/web/friendships/{uid}/follow/',headers=headers)
+            return json.dumps({"type":"FollowSuccess", "FollowUid": uid, "FollowBy": idac})
+            sleep(2)
+        except:
+            return json.dumps({"type":"Fail", "mesage":"CookieIsNotValid!"})
+    except:
+        return json.dumps({"type":"Fail", "mesage":"CookieIsNotValid!"})
 
 
 @app.get("/")
-def read_root():
-    return {"main": "hello"}
+def Home():
+    return json.dumps({"DARLING": "hello"})
 
-def getinfo(link):
-    headers = {
-        'authority': 'www.facebook.com',
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'accept-language': 'vi',
-        'sec-ch-ua': '"Google Chrome";v="105", "Not)A;Brand";v="8", "Chromium";v="105"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-        'sec-fetch-dest': 'document',
-        'sec-fetch-mode': 'navigate',
-        'sec-fetch-site': 'none',
-        'sec-fetch-user': '?1',
-        'upgrade-insecure-requests': '1',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36',
-    }
-    try:
-        response = requests.get(link, headers=headers).text
-        name = response.split('<title>')[1].split('</title>')[0]
-        uid = response.split('userID":"')[1].split('"')[0]
-        return json.dumps({"TYPE": "SUCCESS" , "NAME" : name , "UID": uid})
-    except:
-        return json.dumps({"TYPE": "FAIL" , "MESAGE": "CAN NOT FIND USER!"})
+@app.get("/follow")
+def Follow(cookie: str,uid: str):
+    return follow(cookie,uid)
 
-@app.get("/link")
-def read_item(link: str):
-    return getinfo(link)
+
+
+uvicorn.run(app,host="0.0.0.0",port="8080")
+
+
+
